@@ -38,7 +38,9 @@ class Sampler
 {
 public:	
 	static std::vector<FloatRect> RadialSamples(FloatRect centre, int radius, int nr, int nt);
+    static std::vector<FloatRect> RadialScaleSamples(FloatRect centre, int radius, float scale, int nr, int nt);
 	static std::vector<FloatRect> PixelSamples(FloatRect centre, int radius, bool halfSample = false);
+    static std::vector<FloatRect> PixelScaleSamples(FloatRect centre, int radius, float scale, bool halfSample = false);
 };
 
 #endif

@@ -35,6 +35,7 @@
 #include "GraphUtils/GraphUtils.h"
 
 #include <opencv/highgui.h>
+#include <opencv2/opencv.hpp>
 static const int kTileSize = 30;
 using namespace cv;
 
@@ -59,6 +60,7 @@ LaRank::~LaRank()
 {
 }
 
+// used for computing grad
 double LaRank::Evaluate(const Eigen::VectorXd& x, const FloatRect& y) const
 {
 	double f = 0.0;
@@ -74,8 +76,8 @@ void LaRank::Eval(const MultiSample& sample, std::vector<double>& results)
 {
 	const FloatRect& centre(sample.GetRects()[0]);
 	vector<VectorXd> fvs;
-	const_cast<Features&>(m_features).Eval(sample, fvs);
-	results.resize(fvs.size());
+    const_cast<Features&>(m_features).Eval(sample, fvs);
+    results.resize(fvs.size());
 	for (int i = 0; i < (int)fvs.size(); ++i)
 	{
 		// express y in coord frame of centre sample
@@ -144,6 +146,7 @@ void LaRank::Reprocess()
 	}
 }
 
+// not used
 double LaRank::ComputeDual() const
 {
 	double d = 0.0;

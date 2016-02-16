@@ -38,20 +38,29 @@
 class ImageRep
 {
 public:
-	ImageRep(const cv::Mat& rImage, bool computeIntegral, bool computeIntegralHists, bool colour = false);
+    ImageRep(const cv::Mat& image, bool computeIntegral, bool computeIntegralHsv, bool computeIntegralHist, bool colour=false);
 	
 	int Sum(const IntRect& rRect, int channel = 0) const;
+    int MeanHsv(const IntRect& rRect, int channel) const;
 	void Hist(const IntRect& rRect, Eigen::VectorXd& h) const;
 	
 	inline const cv::Mat& GetImage(int channel = 0) const { return m_images[channel]; }
 	inline const IntRect& GetRect() const { return m_rect; }
 
+    inline const cv::Mat& GetHsvImage() const {return m_hsv_image; }
+    inline const cv::Mat& GetRgbImage() const {return m_rgb_image; }
+
 private:
 	std::vector<cv::Mat> m_images;
 	std::vector<cv::Mat> m_integralImages;
+    std::vector<cv::Mat> m_hsv_images;
+    std::vector<cv::Mat> m_integralHsvImages;
 	std::vector<cv::Mat> m_integralHistImages;
 	int m_channels;
 	IntRect m_rect;
+
+    cv::Mat m_hsv_image;
+    cv::Mat m_rgb_image;
 };
 
 #endif

@@ -32,6 +32,7 @@
 
 #include <opencv/cv.h>
 
+
 class Config;
 
 class RawFeatures : public Features

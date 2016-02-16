@@ -46,8 +46,8 @@ public:
 	}
 	
 	virtual void Eval(const MultiSample& s, std::vector<Eigen::VectorXd>& featVecs)
-	{
-		// default implementation
+    {
+        // default implementation
 		featVecs.resize(s.GetRects().size());
 		for (int i = 0; i < (int)featVecs.size(); ++i)
 		{

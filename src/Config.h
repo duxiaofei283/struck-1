@@ -44,7 +44,11 @@ public:
 	{
 		kFeatureTypeHaar,
 		kFeatureTypeRaw,
-		kFeatureTypeHistogram
+        kFeatureTypeHistogram,
+        kFeatureTypeHsv,
+        kFeatureTypeCircle,
+        kFeatureTypeCircleGrad,
+        kFeatureTypeCircleRgb
 	};
 
 	enum KernelType
@@ -68,6 +72,9 @@ public:
 	std::string						sequenceBasePath;
 	std::string						sequenceName;
 	std::string						resultsPath;
+    std::string                     precPath;
+    std::string                     mfeatureName;
+    std::vector<std::string>        mSeqNames;
 	
 	int								frameWidth;
 	int								frameHeight;

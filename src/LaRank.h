@@ -53,6 +53,7 @@ public:
 
 private:
 
+    // those x_i included in at least one support vector as support patterns
 	struct SupportPattern
 	{
 		std::vector<Eigen::VectorXd> x;
@@ -62,6 +63,7 @@ private:
 		int refCount;
 	};
 
+    // we refer to those pairs (x_i, y) as support vectors
 	struct SupportVector
 	{
 		SupportPattern* x;

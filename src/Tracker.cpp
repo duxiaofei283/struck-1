@@ -36,6 +36,10 @@
 #include "RawFeatures.h"
 #include "HistogramFeatures.h"
 #include "MultiFeatures.h"
+#include "HsvFeatures.h"
+#include "CircleFeatures.h"
+#include "CircleGradFeatures.h"
+#include "CircleRgbFeatures.h"
 
 #include "Kernels.h"
 
@@ -43,6 +47,7 @@
 
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
+#include <opencv2/opencv.hpp>
 
 #include <Eigen/Core>
 
@@ -88,6 +93,15 @@ void Tracker::Reset()
 	
 	m_needsIntegralImage = false;
 	m_needsIntegralHist = false;
+    m_needColor = false;
+    m_needsIntegralHsv = false;
+
+    m_scale = 1.0f;
+    m_scaleNum = 1;
+    for(int i=0; i<m_scaleNum; ++i)
+    {
+        m_scales.push_back(pow(1.01, i-m_scaleNum/2));
+    }
 	
 	int numFeatures = m_config.features.size();
 	vector<int> featureCounts;
@@ -106,6 +120,23 @@ void Tracker::Reset()
 			m_features.push_back(new HistogramFeatures(m_config));
 			m_needsIntegralHist = true;
 			break;
+        case Config::kFeatureTypeHsv:
+            m_features.push_back(new HsvFeatures(m_config));
+            m_needColor = true;
+            break;
+        case Config::kFeatureTypeCircle:
+            m_features.push_back(new CircleFeatures(m_config));
+            m_needsIntegralHsv = true;
+            m_needColor = true;
+            break;
+        case Config::kFeatureTypeCircleGrad:
+            m_features.push_back(new CircleGradFeatures(m_config));
+            break;
+        case Config::kFeatureTypeCircleRgb:
+            m_features.push_back(new CircleRgbFeatures(m_config));
+            m_needsIntegralImage = true;
+            m_needColor = true;
+            break;
 		}
 		featureCounts.push_back(m_features.back()->GetCount());
 		
@@ -142,7 +173,8 @@ void Tracker::Reset()
 void Tracker::Initialise(const cv::Mat& frame, FloatRect bb)
 {
 	m_bb = IntRect(bb);
-	ImageRep image(frame, m_needsIntegralImage, m_needsIntegralHist);
+    m_initbb = IntRect(bb);
+    ImageRep image(frame, m_needsIntegralImage, m_needsIntegralHsv, m_needsIntegralHist, m_needColor);
 	for (int i = 0; i < 1; ++i)
 	{
 		UpdateLearner(image);
@@ -154,9 +186,9 @@ void Tracker::Track(const cv::Mat& frame)
 {
 	assert(m_initialised);
 	
-	ImageRep image(frame, m_needsIntegralImage, m_needsIntegralHist);
+    ImageRep image(frame, m_needsIntegralImage, m_needsIntegralHsv, m_needsIntegralHist, m_needColor);
 	
-	vector<FloatRect> rects = Sampler::PixelSamples(m_bb, m_config.searchRadius);
+    vector<FloatRect> rects = Sampler::PixelSamples(m_bb, m_config.searchRadius * m_scale);
 	
 	vector<FloatRect> keptRects;
 	keptRects.reserve(rects.size());
@@ -181,16 +213,49 @@ void Tracker::Track(const cv::Mat& frame)
 			bestInd = i;
 		}
 	}
-	
-	UpdateDebugImage(keptRects, m_bb, scores);
-	
-	if (bestInd != -1)
-	{
-		m_bb = keptRects[bestInd];
-		UpdateLearner(image);
-#if VERBOSE		
-		cout << "track score: " << bestScore << endl;
+
+    UpdateDebugImage(keptRects, m_bb, scores);
+
+    // scale the best rect
+    std::vector<FloatRect> scaleRects;
+    genMultiScaleSample(image, keptRects[bestInd], scaleRects);
+    MultiSample scaleSample(image, scaleRects);
+
+    m_pLearner->Eval(scaleSample, scores);
+    bestInd = -1;
+    bestScore = -DBL_MAX;
+    for(int i=0; i< (int)scaleRects.size(); ++i)
+    {
+        if(scores[i] > bestScore)
+        {
+            bestScore = scores[i];
+            bestInd = i;
+        }
+    }
+
+    if (bestInd != -1)
+    {
+//        m_bb = keptRects[bestInd];
+        m_bb = scaleRects[bestInd];
+        m_scale = std::max(1.0 * m_bb.Width()/ m_initbb.Width(), 1.0 * m_bb.Height()/ m_initbb.Height());
+        std::cout<<"tracked rect size:  [ "<< m_bb.Width() << "/" << m_initbb.Width()<<" , "<< m_bb.Height() <<"/" << m_initbb.Height()<< " ]"<<std::endl;
+        std::cout <<"search radius:      "<<m_config.searchRadius * m_scale << std::endl;
+        UpdateLearner(image);
+#if VERBOSE
+        cout << "track score: " << bestScore << endl;
 #endif
+
+
+	
+//	UpdateDebugImage(keptRects, m_bb, scores);
+	
+//	if (bestInd != -1)
+//	{
+//		m_bb = keptRects[bestInd];
+//		UpdateLearner(image);
+//#if VERBOSE
+//		cout << "track score: " << bestScore << endl;
+//#endif
 	}
 }
 
@@ -210,13 +275,36 @@ void Tracker::UpdateDebugImage(const vector<FloatRect>& samples, const FloatRect
 void Tracker::Debug()
 {
 	imshow("tracker", m_debugImage);
-	m_pLearner->Debug();
+    m_pLearner->Debug();
 }
 
+void Tracker::genMultiScaleSample(const ImageRep &img, const FloatRect &rect, std::vector<FloatRect> &scale_rects)
+{
+    float w  = rect.Width();
+    float h = rect.Height();
+    float xc = rect.XCentre();
+    float yc = rect.YCentre();
+
+    FloatRect r;
+    for(int i = 0; i< m_scaleNum; ++i)
+//        for(int j=0; j< m_scaleNum; ++j)
+    {
+        r.SetWidth(w * m_scales[i]);
+        r.SetHeight(h * m_scales[i]);
+        r.SetXMin(xc - r.Width()/2);
+        r.SetYMin(yc - r.Height()/2);
+        if(!r.IsInside(img.GetRect()) || r.Width() < m_initbb.Width() * 0.2 || r.Height() < m_initbb.Height() * 0.2) continue;
+        scale_rects.push_back(r);
+    }
+
+    int foo = 1;
+}
+
+//
 void Tracker::UpdateLearner(const ImageRep& image)
 {
 	// note these return the centre sample at index 0
-	vector<FloatRect> rects = Sampler::RadialSamples(m_bb, 2*m_config.searchRadius, 5, 16);
+    vector<FloatRect> rects = Sampler::RadialSamples(m_bb, 2*m_config.searchRadius*m_scale, 5, 16);
 	//vector<FloatRect> rects = Sampler::PixelSamples(m_bb, 2*m_config.searchRadius, true);
 	
 	vector<FloatRect> keptRects;

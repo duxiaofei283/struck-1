@@ -30,13 +30,14 @@
 #include <cassert>
 
 #include <opencv/highgui.h>
+#include <opencv2/opencv.hpp>
 
 using namespace std;
 using namespace cv;
 
 static const int kNumBins = 16;
 
-ImageRep::ImageRep(const Mat& image, bool computeIntegral, bool computeIntegralHist, bool colour) :
+ImageRep::ImageRep(const Mat& image, bool computeIntegral, bool computeIntegralHsv, bool computeIntegralHist, bool colour) :
 	m_channels(colour ? 3 : 1),
 	m_rect(0, 0, image.cols, image.rows)
 {	
@@ -44,6 +45,11 @@ ImageRep::ImageRep(const Mat& image, bool computeIntegral, bool computeIntegralH
 	{
 		m_images.push_back(Mat(image.rows, image.cols, CV_8UC1));
 		if (computeIntegral) m_integralImages.push_back(Mat(image.rows+1, image.cols+1, CV_32SC1));
+        if (computeIntegralHsv)
+        {
+            m_hsv_images.push_back(Mat(image.rows, image.cols, CV_8UC1));
+            m_integralHsvImages.push_back(Mat(image.rows+1, image.cols+1, CV_32SC1));
+        }
 		if (computeIntegralHist)
 		{
 			for (int j = 0; j < kNumBins; ++j)
@@ -55,20 +61,28 @@ ImageRep::ImageRep(const Mat& image, bool computeIntegral, bool computeIntegralH
 		
 	if (colour)
 	{
+//        std::cout<<"image channels "<<image.channels() << std::endl;
 		assert(image.channels() == 3);
 		split(image, m_images);
+
+        // convert rgb to hsv image
+        cv::cvtColor(image, m_hsv_image, CV_RGB2HSV);
+        split(m_hsv_image, m_hsv_images);
+        image.copyTo(m_rgb_image);
 	}
 	else
 	{
 		assert(image.channels() == 1 || image.channels() == 3);
 		if (image.channels() == 3)
 		{
-			cvtColor(image, m_images[0], CV_RGB2GRAY);
+            cvtColor(image, m_images[0], CV_RGB2GRAY);
 		}
 		else if (image.channels() == 1)
 		{
 			image.copyTo(m_images[0]);
 		}
+
+        // todo
 	}
 	
 	if (computeIntegral)
@@ -79,6 +93,14 @@ ImageRep::ImageRep(const Mat& image, bool computeIntegral, bool computeIntegralH
 			integral(m_images[i], m_integralImages[i]);
 		}
 	}
+
+    if(computeIntegralHsv)
+    {
+        for(int i=0; i<m_channels; ++i)
+        {
+            integral(m_hsv_images[i], m_integralHsvImages[i]);
+        }
+    }
 	
 	if (computeIntegralHist)
 	{
@@ -112,6 +134,15 @@ int ImageRep::Sum(const IntRect& rRect, int channel) const
 			m_integralImages[channel].at<int>(rRect.YMax(), rRect.XMin()) -
 			m_integralImages[channel].at<int>(rRect.YMin(), rRect.XMax());
 }
+
+int ImageRep::MeanHsv(const IntRect& rRect, int channel) const
+{
+    assert(rRect.XMin() >= 0 && rRect.YMin() >= 0 && rRect.XMax() <= m_images[0].cols && rRect.YMax() <= m_images[0].rows);
+    int sum_v = m_integralHsvImages[channel].at<int>(rRect.YMin(), rRect.XMin()) + m_integralHsvImages[channel].at<int>(rRect.YMax(), rRect.XMax()) -
+                m_integralHsvImages[channel].at<int>(rRect.YMax(), rRect.XMin()) - m_integralHsvImages[channel].at<int>(rRect.YMin(), rRect.XMax());
+    return sum_v / rRect.Area();
+}
+
 
 void ImageRep::Hist(const IntRect& rRect, Eigen::VectorXd& h) const
 {

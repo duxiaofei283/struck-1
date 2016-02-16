@@ -50,6 +50,9 @@ public:
 	void Reset();
 	void Track(const cv::Mat& frame);
 	void Debug();
+
+    void genMultiScaleSample(const ImageRep& img, const FloatRect& rect, std::vector<FloatRect>& scale_rects);
+
 	
 	inline const FloatRect& GetBB() const { return m_bb; }
 	inline bool IsInitialised() const { return m_initialised; }
@@ -61,10 +64,17 @@ private:
 	std::vector<Kernel*> m_kernels;
 	LaRank* m_pLearner;
 	FloatRect m_bb;
+    FloatRect m_initbb;
 	cv::Mat m_debugImage;
 	bool m_needsIntegralImage;
 	bool m_needsIntegralHist;
+    bool m_needColor;
+    bool m_needsIntegralHsv;
 	
+    float m_scale;
+    std::vector<float> m_scales;
+    int m_scaleNum;
+
 	void UpdateLearner(const ImageRep& image);
 	void UpdateDebugImage(const std::vector<FloatRect>& samples, const FloatRect& centre, const std::vector<double>& scores);
 };

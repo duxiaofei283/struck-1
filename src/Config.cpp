@@ -59,12 +59,19 @@ Config::Config(const std::string& path)
 		else if (name == "sequenceBasePath") iss >> sequenceBasePath;
 		else if (name == "sequenceName") iss >> sequenceName;
 		else if (name == "resultsPath") iss >> resultsPath;
+        else if (name == "precisionPath") iss >> precPath;
 		else if (name == "frameWidth") iss >> frameWidth;
 		else if (name == "frameHeight") iss >> frameHeight;
 		else if (name == "seed") iss >> seed;
 		else if (name == "searchRadius") iss >> searchRadius;
 		else if (name == "svmC") iss >> svmC;
 		else if (name == "svmBudgetSize") iss >> svmBudgetSize;
+        else if (name == "multiSeq")
+        {
+            string sn;
+            iss >> sn;
+            mSeqNames.push_back(sn);
+        }
 		else if (name == "feature")
 		{
 			string featureName, kernelName;
@@ -76,11 +83,17 @@ Config::Config(const std::string& path)
 			if      (featureName == FeatureName(kFeatureTypeHaar)) fkp.feature = kFeatureTypeHaar;
 			else if (featureName == FeatureName(kFeatureTypeRaw)) fkp.feature = kFeatureTypeRaw;
 			else if (featureName == FeatureName(kFeatureTypeHistogram)) fkp.feature = kFeatureTypeHistogram;
+            else if (featureName == FeatureName(kFeatureTypeHsv)) fkp.feature = kFeatureTypeHsv;
+            else if (featureName == FeatureName(kFeatureTypeCircle)) fkp.feature = kFeatureTypeCircle;
+            else if (featureName == FeatureName(kFeatureTypeCircleGrad)) fkp.feature = kFeatureTypeCircleGrad;
+            else if (featureName == FeatureName(kFeatureTypeCircleRgb)) fkp.feature = kFeatureTypeCircleRgb;
 			else
 			{
 				cout << "error: unrecognised feature: " << featureName << endl;
 				continue;
 			}
+
+            mfeatureName = featureName;
 			
 			if      (kernelName == KernelName(kKernelTypeLinear)) fkp.kernel = kKernelTypeLinear;
 			else if (kernelName == KernelName(kKernelTypeIntersection)) fkp.kernel = kKernelTypeIntersection;
@@ -115,6 +128,7 @@ void Config::SetDefaults()
 	sequenceBasePath = "";
 	sequenceName = "";
 	resultsPath = "";
+    precPath = "";
 	
 	frameWidth = 320;
 	frameHeight = 240;
@@ -137,6 +151,14 @@ std::string Config::FeatureName(FeatureType f)
 		return "haar";
 	case kFeatureTypeHistogram:
 		return "histogram";
+    case kFeatureTypeHsv:
+        return "hsv";
+    case kFeatureTypeCircle:
+        return "circle";
+    case kFeatureTypeCircleGrad:
+        return "circle_grad";
+    case kFeatureTypeCircleRgb:
+        return "circle_rgb";
 	default:
 		return "";
 	}
@@ -167,6 +189,7 @@ ostream& operator<< (ostream& out, const Config& conf)
 	out << "  sequenceBasePath   = " << conf.sequenceBasePath << endl;
 	out << "  sequenceName       = " << conf.sequenceName << endl;
 	out << "  resultsPath        = " << conf.resultsPath << endl;
+    out << "  precisionPath      = " << conf.precPath << endl;
 	out << "  frameWidth         = " << conf.frameWidth << endl;
 	out << "  frameHeight        = " << conf.frameHeight << endl;
 	out << "  seed               = " << conf.seed << endl;

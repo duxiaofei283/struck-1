@@ -55,7 +55,12 @@ vector<FloatRect> Sampler::RadialSamples(FloatRect centre, int radius, int nr, i
 		}
 	}
 	
-	return samples;
+    return samples;
+}
+
+std::vector<FloatRect> Sampler::RadialScaleSamples(FloatRect centre, int radius, float scale, int nr, int nt)
+{
+
 }
 
 vector<FloatRect> Sampler::PixelSamples(FloatRect centre, int radius, bool halfSample)
@@ -83,5 +88,10 @@ vector<FloatRect> Sampler::PixelSamples(FloatRect centre, int radius, bool halfS
 		}
 	}
 	
-	return samples;
+    return samples;
+}
+
+std::vector<FloatRect> Sampler::PixelScaleSamples(FloatRect centre, int radius, float scale, bool halfSample)
+{
+
 }
