@@ -75,6 +75,10 @@ private:
     std::vector<float> m_scales;
     int m_scaleNum;
 
+    float m_rotation;
+    int m_rotHalfNum;
+    std::vector<float> m_rotations;
+
 	void UpdateLearner(const ImageRep& image);
 	void UpdateDebugImage(const std::vector<FloatRect>& samples, const FloatRect& centre, const std::vector<double>& scores);
 };

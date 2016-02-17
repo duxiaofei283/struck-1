@@ -45,7 +45,7 @@ public:
 		return m_featVec;
 	}
 	
-	virtual void Eval(const MultiSample& s, std::vector<Eigen::VectorXd>& featVecs)
+    virtual void Eval(const MultiSample& s, std::vector<Eigen::VectorXd>& featVecs)
     {
         // default implementation
 		featVecs.resize(s.GetRects().size());
@@ -54,6 +54,12 @@ public:
 			featVecs[i] = Eval(s.GetSample(i));
 		}
 	}
+
+    virtual void RotEval(const MultiSample& s, std::vector<Eigen::VectorXd>& featVecs)
+    {
+        // default implementation: the same as Eval
+        Eval(s, featVecs);
+    }
 	
 	inline int GetCount() const { return m_featureCount; }
 

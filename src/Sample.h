@@ -36,36 +36,42 @@
 class Sample
 {
 public:
-	Sample(const ImageRep& image, const FloatRect& roi) :
+    Sample(const ImageRep& image, const FloatRect& roi, const float rotation=0) :
 		m_image(image),
-		m_roi(roi)
+        m_roi(roi),
+        m_rot(rotation)
 	{
 	}
 	
 	inline const ImageRep& GetImage() const { return m_image; }
 	inline const FloatRect& GetROI() const { return m_roi; }
+    inline const float GetRotation() const { return m_rot; }
 
 private:
 	const ImageRep& m_image;
 	FloatRect m_roi;
+    float m_rot;
 };
 
 class MultiSample
 {
 public:
-	MultiSample(const ImageRep& image, const std::vector<FloatRect>& rects) :
+    MultiSample(const ImageRep& image, const std::vector<FloatRect>& rects, const std::vector<float>& rotations) :
 		m_image(image),
-		m_rects(rects)
+        m_rects(rects),
+        m_rots(rotations)
 	{
 	}
 	
 	inline const ImageRep& GetImage() const { return m_image; }
 	inline const std::vector<FloatRect>& GetRects() const { return m_rects; }
-	inline Sample GetSample(int i) const { return Sample(m_image, m_rects[i]); }
+    inline const std::vector<float>& GetRotations() const { return m_rots;}
+    inline Sample GetSample(int i) const { return Sample(m_image, m_rects[i], m_rots[i]); }
 
 private:
 	const ImageRep& m_image;
 	std::vector<FloatRect> m_rects;
+    std::vector<float> m_rots;
 };
 
 #endif

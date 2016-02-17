@@ -9,8 +9,8 @@ static const int kLocalSize = 3;
 CirclePatchFeatures::CirclePatchFeatures(const Config &conf) : m_hsv_feature(conf)
 {
     m_hsv_num = m_hsv_feature.GetCount();
+    m_fea_size = m_hsv_num *kNumDist;
     m_miniPatch_num = kNumOrien * kNumDist;
-    m_fea_size = m_hsv_num * m_miniPatch_num;
     SetCount(m_fea_size);
     std::cout << "circle patch feature bins : "<<GetCount() << std::endl;
 
@@ -55,7 +55,7 @@ void CirclePatchFeatures::UpdateFeatureVector(const Sample &s)
     }
 
     int ix, iy, hsv_bin_idx, ori_bin_idx;
-    int patch_bin_idx;
+    int patch_bin_idx, patch_fea_bin_idx;
     int dist_bin_idx, fea_bin_idx;
     int *dp, *hbp, *op;
     float *htp;
@@ -78,25 +78,29 @@ void CirclePatchFeatures::UpdateFeatureVector(const Sample &s)
             // mini patch feature vector
             patch_bin_idx = dist_bin_idx * kNumOrien + ori_bin_idx;
             pixelnum_patch[patch_bin_idx] += hsv_theta;
-            m_patch_featVec[patch_bin_idx][hsv_bin_idx] += hsv_theta;
+            m_patch_featVec[patch_fea_bin_idx][hsv_bin_idx] += hsv_theta;
 
+            // circle feature vector
+            pixelnum_dist_bin[dist_bin_idx] += hsv_theta;
+            fea_bin_idx = dist_bin_idx * m_hsv_num + hsv_bin_idx;
+            m_featVec[fea_bin_idx] += hsv_theta;
         }
     }
 
     // normalize patch feature vector
     for(int id=0; id<m_miniPatch_num; ++id)
     {
-        if (pixelnum_patch[id] !=0)
-            m_patch_featVec[id] /= pixelnum_patch[id] * m_miniPatch_num;
+        m_patch_featVec[id] /= pixelnum_patch[id] * m_miniPatch_num;
     }
 
-    // concatenate patch feature vector
-    for(int id=0; id < m_miniPatch_num; ++id)
-        for(int ic=0; ic < m_hsv_num; ++ic)
+    // normalize circle feature vector
+    for(int id=0; id<kNumDist; ++id)
+        for(int ic=0; ic<m_hsv_num; ++ic)
         {
             fea_bin_idx = id * m_hsv_num + ic;
-            m_featVec[fea_bin_idx] = m_patch_featVec[id][ic];
+            m_featVec[fea_bin_idx] /= pixelnum_dist_bin[id] * kNumDist;
         }
+
 }
 
 void CirclePatchFeatures::UpdatePatchFeatureVector(const Sample &s, Eigen::VectorXd& featVec)
@@ -205,34 +209,36 @@ void CirclePatchFeatures::compDistMap(const cv::Size &patch_size)
 
 void CirclePatchFeatures::compOriMap(const cv::Size &patch_size, const float base_rotation)
 {
-    m_orimap_size = patch_size;
-    cv::Point center = cv::Point(m_orimap_size.width/2, m_orimap_size.height/2);
-
-    // compute orientation map
-    m_ori_map.create(m_orimap_size.height, m_orimap_size.width, CV_32SC1);
-    float grad_bin_step = 2 * M_PI / kNumOrien;
-
-    int ix, iy;
-    int* op;
-    float rx, ry;
-    float angle;
-    for(iy=0; iy < m_orimap_size.height; ++iy)
+    if (m_orimap_size == patch_size)
+        return;
+    else
     {
-        op = m_ori_map.ptr<int>(iy);
+        m_orimap_size = patch_size;
+        cv::Point center = cv::Point(m_orimap_size.width/2, m_orimap_size.height/2);
 
-        for(ix=0; ix < m_orimap_size.width; ++ix)
+        // compute orientation map
+        m_ori_map.create(m_orimap_size.height, m_orimap_size.width, CV_32SC1);
+        float grad_bin_step = 2 * M_PI / kNumOrien;
+
+        int ix, iy;
+        int* op;
+        float rx, ry;
+        float angle;
+        for(iy=0; iy < m_orimap_size.height; ++iy)
         {
-            rx = ix - center.x;
-            ry = iy - center.y;
-            if(rx == 0)
-                rx += FLT_EPSILON;
-            angle = std::atan2f(ry, rx) + M_PI - base_rotation;
-            // the relative angle should be in range (0, 2pi)
-            angle = mod(angle, 2*M_PI);
-            op[ix] = int(angle / grad_bin_step);
+            op = m_ori_map.ptr<int>(iy);
 
-            if(op[ix] > kNumOrien-1)
-                int foo = 1;
+            for(ix=0; ix < m_orimap_size.width; ++ix)
+            {
+                rx = ix - center.x;
+                ry = iy - center.y;
+                if(rx == 0)
+                    rx += FLT_EPSILON;
+                angle = std::atan2f(ry, rx) + M_PI - base_rotation;
+                // the relative angle should be in range (0, 2pi)
+                angle = (angle<0) ? angle+2*M_PI : angle;
+                op[ix] = int(angle / grad_bin_step);
+            }
         }
     }
 }
@@ -259,7 +265,6 @@ void CirclePatchFeatures:: RotEval(const MultiSample &s, std::vector<Eigen::Vect
     // prepare hsv map
     prepMap(s);
 
-    auto start = std::clock();
     featVecs.resize(s.GetRects().size());
     for (int i = 0; i < (int)featVecs.size(); ++i)
     {

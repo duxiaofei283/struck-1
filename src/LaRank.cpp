@@ -84,7 +84,23 @@ void LaRank::Eval(const MultiSample& sample, std::vector<double>& results)
 		FloatRect y(sample.GetRects()[i]);
 		y.Translate(-centre.XMin(), -centre.YMin());
 		results[i] = Evaluate(fvs[i], y);
-	}
+    }
+}
+
+void LaRank::RotEval(const MultiSample &sample, std::vector<double> &results)
+{
+    const FloatRect& centre(sample.GetRects()[0]);
+    std::vector<Eigen::VectorXd>  fvs;
+    const_cast<Features&>(m_features).RotEval(sample, fvs);
+    results.resize(fvs.size());
+    for (int i = 0; i < (int)fvs.size(); ++i)
+    {
+        // express y in coord frame of centre sample
+        FloatRect y(sample.GetRects()[i]);
+        y.Translate(-centre.XMin(), -centre.YMin());
+        std::cout<<"TODO: NOT RIGHT!!!"<<std::endl;
+        results[i] = 0;
+    }
 }
 
 void LaRank::Update(const MultiSample& sample, int y)

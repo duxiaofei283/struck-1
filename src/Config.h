@@ -46,9 +46,10 @@ public:
 		kFeatureTypeRaw,
         kFeatureTypeHistogram,
         kFeatureTypeHsv,
-        kFeatureTypeCircle,
+        kFeatureTypeCircleHsv,
         kFeatureTypeCircleGrad,
-        kFeatureTypeCircleRgb
+        kFeatureTypeCircleRgb,
+        kFeatureTypeCirclePatch,
 	};
 
 	enum KernelType

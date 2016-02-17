@@ -1,0 +1,43 @@
+#ifndef SEG_MODEL
+#define SEG_MODEL
+
+#include <iostream>
+#include "mutils.h"
+
+static const float kProb_c10 = 0.4;
+static const float kProb_c11 = 0.6;
+static const float kProb_c01 = 0.4;
+static const float kProb_c00 = 0.6;
+static const float kAlpha = 0.1;
+
+class SegModel
+{
+public:
+    SegModel(int num_hbin=8, int num_sbin=8, int num_vbin=4);
+    ~SegModel();
+    
+    int m_num_hbin;
+    int m_num_sbin;
+    int m_num_vbin;
+    int m_num_bin;
+    
+    float m_hStep;
+    float m_sStep;
+    float m_vStep;
+    
+    std::vector<float> m_prob_c0_y;
+    std::vector<float> m_prob_c1_y;
+    std::vector<float> m_prob_y_c0;
+    std::vector<float> m_prob_y_c1;
+    
+    bool m_init_flag;
+    
+    void updateProb();
+    
+    float getForeProb(const int bin_idx) const;
+    float getBackProb(const int bin_idx) const;
+    
+}; 
+
+#endif // SEG_MODEL
+

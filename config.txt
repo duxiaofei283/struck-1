@@ -35,8 +35,21 @@ sequenceName = Basketball
 #multiSeq = Diving
 #multiSeq = Dog1
 #multiSeq = Doll
-#multiSeq = DragonBaby
-multiSeq = Girl
+
+multiSeq = Soccer
+multiSeq = Subway
+multiSeq = Surfer
+multiSeq = Suv
+multiSeq = Sylvester
+#multiSeq = Tiger1
+#multiSeq = Tiger2
+multiSeq = Toy
+multiSeq = Trellis
+multiSeq = Twinnings
+#multiSeq = Vase
+multiSeq = Walking
+multiSeq = Walking2
+multiSeq = Woman
 
 # frame size for use during tracking.
 # the input image will be scaled to this size.
@@ -65,7 +78,8 @@ svmBudgetSize = 50
 #feature = haar gaussian 0.2
 #feature = raw gaussian 0.1
 #feature = histogram intersection
-feature = circle intersection
+feature = circle_hsv intersection
 #feature = hsv intersection  
 #feature = circle_grad intersection   
 #feature = circle_rgb intersection
+#feature = circle_patch intersection

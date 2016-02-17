@@ -84,10 +84,11 @@ Config::Config(const std::string& path)
 			else if (featureName == FeatureName(kFeatureTypeRaw)) fkp.feature = kFeatureTypeRaw;
 			else if (featureName == FeatureName(kFeatureTypeHistogram)) fkp.feature = kFeatureTypeHistogram;
             else if (featureName == FeatureName(kFeatureTypeHsv)) fkp.feature = kFeatureTypeHsv;
-            else if (featureName == FeatureName(kFeatureTypeCircle)) fkp.feature = kFeatureTypeCircle;
+            else if (featureName == FeatureName(kFeatureTypeCircleHsv)) fkp.feature = kFeatureTypeCircleHsv;
             else if (featureName == FeatureName(kFeatureTypeCircleGrad)) fkp.feature = kFeatureTypeCircleGrad;
             else if (featureName == FeatureName(kFeatureTypeCircleRgb)) fkp.feature = kFeatureTypeCircleRgb;
-			else
+            else if (featureName == FeatureName(kFeatureTypeCirclePatch)) fkp.feature = kFeatureTypeCirclePatch;
+            else
 			{
 				cout << "error: unrecognised feature: " << featureName << endl;
 				continue;
@@ -153,12 +154,14 @@ std::string Config::FeatureName(FeatureType f)
 		return "histogram";
     case kFeatureTypeHsv:
         return "hsv";
-    case kFeatureTypeCircle:
-        return "circle";
+    case kFeatureTypeCircleHsv:
+        return "circle_hsv";
     case kFeatureTypeCircleGrad:
         return "circle_grad";
     case kFeatureTypeCircleRgb:
         return "circle_rgb";
+    case kFeatureTypeCirclePatch:
+        return "circle_patch";
 	default:
 		return "";
 	}

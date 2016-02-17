@@ -12,10 +12,7 @@ public:
     CirclePatchFeatures(const Config &conf);
     void compDistMap(const cv::Size &patch_size);
     void compOriMap(const cv::Size &patch_size, const float base_rotation=0);
-
     virtual void Eval(const MultiSample &s, std::vector<Eigen::VectorXd> &featVecs);
-    virtual void RotEval(const MultiSample& s, std::vector<Eigen::VectorXd>& featVecs);
-    void prepMap(const MultiSample &s);
 
 private:
     int m_miniPatch_num;
@@ -36,7 +33,6 @@ private:
     cv::Mat m_hsv_theta_map;
 
     virtual void UpdateFeatureVector(const Sample& s);
-    void UpdatePatchFeatureVector(const Sample &s, Eigen::VectorXd &featVec);
 
 
 };

@@ -40,10 +40,12 @@
 #include "CircleFeatures.h"
 #include "CircleGradFeatures.h"
 #include "CircleRgbFeatures.h"
+#include "CirclePatchFeatures.h"
 
 #include "Kernels.h"
 
 #include "LaRank.h"
+#include "mutils.h"
 
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
@@ -57,6 +59,9 @@
 using namespace cv;
 using namespace std;
 using namespace Eigen;
+
+static const float kRotOffset = M_PI/6;
+static const float kNumHalfRot = 1;
 
 Tracker::Tracker(const Config& conf) :
 	m_config(conf),
@@ -96,12 +101,23 @@ void Tracker::Reset()
     m_needColor = false;
     m_needsIntegralHsv = false;
 
+    // scale
     m_scale = 1.0f;
     m_scaleNum = 1;
     for(int i=0; i<m_scaleNum; ++i)
     {
         m_scales.push_back(pow(1.01, i-m_scaleNum/2));
     }
+
+    // rotation
+    m_rotation = 0.f;
+    m_rotHalfNum = kNumHalfRot;
+    for(int i=m_rotHalfNum; i >= 1; --i)
+        m_rotations.push_back(mod(-i*kRotOffset/m_rotHalfNum, 2*M_PI));
+    m_rotations.push_back(0.f);
+    for(int i=1; i<=m_rotHalfNum; ++i)
+        m_rotations.push_back(mod(i * kRotOffset/m_rotHalfNum, 2*M_PI));
+
 	
 	int numFeatures = m_config.features.size();
 	vector<int> featureCounts;
@@ -124,7 +140,7 @@ void Tracker::Reset()
             m_features.push_back(new HsvFeatures(m_config));
             m_needColor = true;
             break;
-        case Config::kFeatureTypeCircle:
+        case Config::kFeatureTypeCircleHsv:
             m_features.push_back(new CircleFeatures(m_config));
             m_needsIntegralHsv = true;
             m_needColor = true;
@@ -137,6 +153,13 @@ void Tracker::Reset()
             m_needsIntegralImage = true;
             m_needColor = true;
             break;
+        case Config::kFeatureTypeCirclePatch:
+            m_features.push_back(new CirclePatchFeatures(m_config));
+            m_needsIntegralHsv = true;
+            m_needColor = true;
+            break;
+        default:
+            return;
 		}
 		featureCounts.push_back(m_features.back()->GetCount());
 		
@@ -192,13 +215,15 @@ void Tracker::Track(const cv::Mat& frame)
 	
 	vector<FloatRect> keptRects;
 	keptRects.reserve(rects.size());
+    std::vector<float> rots;
 	for (int i = 0; i < (int)rects.size(); ++i)
 	{
 		if (!rects[i].IsInside(image.GetRect())) continue;
 		keptRects.push_back(rects[i]);
+        rots.push_back(m_rotation);
 	}
 	
-	MultiSample sample(image, keptRects);
+    MultiSample sample(image, keptRects, rots);
 	
 	vector<double> scores;
 	m_pLearner->Eval(sample, scores);
@@ -216,15 +241,39 @@ void Tracker::Track(const cv::Mat& frame)
 
     UpdateDebugImage(keptRects, m_bb, scores);
 
-    // scale the best rect
-    std::vector<FloatRect> scaleRects;
-    genMultiScaleSample(image, keptRects[bestInd], scaleRects);
-    MultiSample scaleSample(image, scaleRects);
+//    //---- scale the best rect ----------------------------------
+//    std::vector<FloatRect> scaleRects;
+//    genMultiScaleSample(image, keptRects[bestInd], scaleRects);
+//    MultiSample scaleSample(image, scaleRects);
+//    m_pLearner->Eval(scaleSample, scores);
 
-    m_pLearner->Eval(scaleSample, scores);
-    bestInd = -1;
+//    bestScore = -DBL_MAX;
+//    bestInd = -1;
+//    for(int i=0; i< (int)scaleRects.size(); ++i)
+//    {
+//        if(scores[i] > bestScore)
+//        {
+//            bestScore = scores[i];
+//            bestInd = i;
+//        }
+//    }
+//    //-----------------------------------------------------------
+
+    //--- rotate the best rect ---------------------------------
+    std::vector<FloatRect> rotRects;
+    rots.clear();
+    float r;
+    for(int i=0; i<(int)m_rotations.size(); ++i)
+    {
+        r = mod(m_rotation + m_rotations[i], 2*M_PI);
+        rots.push_back(r);
+        rotRects.push_back(keptRects[bestInd]);
+    }
+    MultiSample rotSample(image, rotRects, rots);
+    m_pLearner->Eval(rotSample, scores);
     bestScore = -DBL_MAX;
-    for(int i=0; i< (int)scaleRects.size(); ++i)
+    bestInd = -1;
+    for(int i=0; i< (int)rotRects.size(); ++i)
     {
         if(scores[i] > bestScore)
         {
@@ -232,30 +281,23 @@ void Tracker::Track(const cv::Mat& frame)
             bestInd = i;
         }
     }
+    //-----------------------------------------------------------
+
 
     if (bestInd != -1)
     {
 //        m_bb = keptRects[bestInd];
-        m_bb = scaleRects[bestInd];
+//        m_bb = scaleRects[bestInd];
+        m_bb = rotRects[bestInd];
         m_scale = std::max(1.0 * m_bb.Width()/ m_initbb.Width(), 1.0 * m_bb.Height()/ m_initbb.Height());
-        std::cout<<"tracked rect size:  [ "<< m_bb.Width() << "/" << m_initbb.Width()<<" , "<< m_bb.Height() <<"/" << m_initbb.Height()<< " ]"<<std::endl;
-        std::cout <<"search radius:      "<<m_config.searchRadius * m_scale << std::endl;
+        m_rotation = rots[bestInd];
+//        std::cout<<"tracked rect size:  [ "<< m_bb.Width() << "/" << m_initbb.Width()<<" , "<< m_bb.Height() <<"/" << m_initbb.Height()<< " ]"<<std::endl;
+        std::cout <<"search radius:      "<< m_config.searchRadius * m_scale << std::endl;
+        std::cout <<"rotation:  "<< 180 * m_rotation / M_PI << std::endl;
         UpdateLearner(image);
 #if VERBOSE
         cout << "track score: " << bestScore << endl;
 #endif
-
-
-	
-//	UpdateDebugImage(keptRects, m_bb, scores);
-	
-//	if (bestInd != -1)
-//	{
-//		m_bb = keptRects[bestInd];
-//		UpdateLearner(image);
-//#if VERBOSE
-//		cout << "track score: " << bestScore << endl;
-//#endif
 	}
 }
 
@@ -293,11 +335,10 @@ void Tracker::genMultiScaleSample(const ImageRep &img, const FloatRect &rect, st
         r.SetHeight(h * m_scales[i]);
         r.SetXMin(xc - r.Width()/2);
         r.SetYMin(yc - r.Height()/2);
-        if(!r.IsInside(img.GetRect()) || r.Width() < m_initbb.Width() * 0.2 || r.Height() < m_initbb.Height() * 0.2) continue;
+        if(!r.IsInside(img.GetRect()) || r.Width() < m_initbb.Width() * 0.2 || r.Height() < m_initbb.Height() * 0.2)
+            continue;
         scale_rects.push_back(r);
     }
-
-    int foo = 1;
 }
 
 //
@@ -309,16 +350,19 @@ void Tracker::UpdateLearner(const ImageRep& image)
 	
 	vector<FloatRect> keptRects;
 	keptRects.push_back(rects[0]); // the true sample
+    vector<float> rots;
+    rots.push_back(m_rotation);
 	for (int i = 1; i < (int)rects.size(); ++i)
 	{
 		if (!rects[i].IsInside(image.GetRect())) continue;
 		keptRects.push_back(rects[i]);
+        rots.push_back(m_rotation);
 	}
 		
 #if VERBOSE		
 	cout << keptRects.size() << " samples" << endl;
 #endif
 		
-	MultiSample sample(image, keptRects);
+    MultiSample sample(image, keptRects, rots);
 	m_pLearner->Update(sample, 0);
 }

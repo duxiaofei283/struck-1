@@ -1,0 +1,48 @@
+#include "SegModel.h"
+
+SegModel::SegModel(int num_hbin, int num_sbin, int num_vbin)
+{
+    m_num_hbin = num_hbin;
+    m_num_sbin = num_sbin;
+    m_num_vbin = num_vbin;
+    m_num_bin = num_hbin * num_sbin + num_vbin;
+    
+    m_hStep = 180.f / m_num_hbin;
+    m_sStep = 256.f / m_num_sbin;
+    m_vStep = 256.f / m_num_vbin;
+
+    m_prob_c0_y = std::vector<float>(m_num_bin, 0.f);
+    m_prob_c1_y = std::vector<float>(m_num_bin, 0.f);
+    m_prob_y_c0 = std::vector<float>(m_num_bin, 0.f);
+    m_prob_y_c1 = std::vector<float>(m_num_bin, 0.f);
+    
+    m_init_flag = false;    
+}
+
+
+void SegModel::updateProb()
+{
+    // initialization
+    if(!m_init_flag)
+    {
+        int foo = 1;
+    }
+    else
+    {
+        
+    }
+}
+
+float SegModel::getForeProb(const int bin_idx) const
+{
+    if(!m_init_flag)
+        return 1.0;
+    return m_prob_c1_y[bin_idx];
+}
+
+float SegModel::getBackProb(const int bin_idx) const
+{
+    if(!m_init_flag)
+        return 0.0;
+    return m_prob_c0_y[bin_idx];
+}
